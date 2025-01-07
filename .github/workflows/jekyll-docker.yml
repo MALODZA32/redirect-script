@@ -1,10 +1,10 @@
-name: Jekyll site CI
+name: Jekyll Site CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ] # Triggers the workflow when changes are pushed to the "main" branch
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ] # Triggers the workflow on pull requests targeting the "main" branch
 
 jobs:
   build:
@@ -12,9 +12,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the site in the jekyll/builder container
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.1 # Set Ruby version (update to the version your Jekyll site requires)
+
+    - name: Install dependencies
       run: |
-        docker run \
-        -v ${{ github.workspace }}:/srv/jekyll -v ${{ github.workspace }}/_site:/srv/jekyll/_site \
-        jekyll/builder:latest /bin/bash -c "chmod -R 777 /srv/jekyll && jekyll build --future"
+        gem install bundler
+        bundle install
+
+    - name: Build Jekyll site
+      run: |
+        bundle exec jekyll build --future
+
+    - name: Upload site to artifact (optional, for testing builds)
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: built-site
+        path: ./_site/
+
+    - name: Deploy to GitHub Pages
+      if: ${{ github.event_name == 'push' }}
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./_site
